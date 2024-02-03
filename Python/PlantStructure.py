@@ -161,7 +161,7 @@ def configChart(res, chartFileName):
 # Open the saved PNG image
 import os
 
-tableDir = "outputs/Table2_Plant_structure_and_Fruit_set.png"
+tableDir = "outputs/Table1_Plant_structure_and_Fruit_set.png"
 
 configChart(res, tableDir)
 os.system("start " + tableDir)
