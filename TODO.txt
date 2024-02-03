@@ -1,0 +1,6 @@
+TODO:
+* Bài dự báo sản lượng cà chua
+Đọc để trình bày cho cô Điệp bài báo 2020 của Học viện nông nghiệp VN "Dataset on the effects of spacing and fruit truss limitation on the growth, yield and quality of open-field tomato plants" https://www.sciencedirect.com/science/article/pii/S2352340920310775
+Đọc bài "Machine learning for large-scale crop yield forecasting" <https://www.sciencedirect.com/science/article/pii/S0308521X20308775>
+* Tìm tutorial tự học regression dùng scikit-learn python package với Google Colaboratory (https://colab.research.google.com/)
+* Next meeting: 4h30 thứ hai 29/1
