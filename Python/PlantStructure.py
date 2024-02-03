@@ -4,20 +4,20 @@ import numpy as np
 import ANOVA
 
 excel_file_path = "resources/TomatoData.xlsx"
+tableDir = "outputs/Table1_Plant_structure_and_Fruit_set.png"
 df = pd.read_excel(excel_file_path, sheet_name="Plant structure and fruit set")
-meanTables = pd.DataFrame()
-
-columns_to_remove = [2, 4, 6, 17, 18]
-df = df.drop(df.columns[columns_to_remove], axis=1)
 
 
 def stdError(values):
     return np.std(values, ddof=1) / np.sqrt(len(values))
 
+
 # mean, ssw, size
 def calc_mean_mse(data):
+    data = np.array(data)
     mean = data.mean()
     return [mean, sum((val - mean) ** 2 for val in data), len(data)]
+
 
 def experimentCellsToNpArray(df):
     df.columns = [
@@ -57,13 +57,14 @@ def experimentCellsToNpArray(df):
         if isTreatmentName(treatment):
             treatmentName = getTreatmentName(treatment)
 
-            # average of next 5 cells
+            # average of next cells
             def get_cell(row_index, column_name):
-                try:
-                    values = df.iloc[row_index : row_index + 5][column_name].values
-                    return calc_mean_mse(values)
-                except IndexError:
-                    return "-"
+                values = []
+                i = row_index
+                while i == row_index or pd.isna(df.at[i, "Treatment"]):
+                    values.append(df.at[i, column_name])
+                    i += 1
+                return calc_mean_mse(values)
 
             newExperiment = pd.Series(index=res.columns)
             newExperiment["Replication"] = str(treatmentName[0])
@@ -82,14 +83,11 @@ def experimentCellsToNpArray(df):
                 mean = newExperiment[col][0]
                 if np.isnan(mean) != True:
                     fruit_set.append(mean * 100)
-            newExperiment["Fruit set"] = calc_mean_mse(np.array(fruit_set))
+            newExperiment["Fruit set"] = calc_mean_mse(fruit_set)
 
             res = res._append(newExperiment, ignore_index=True)
 
     return res
-
-
-avg = experimentCellsToNpArray(df)
 
 
 # function to convert to superscript
@@ -142,25 +140,23 @@ def assessAllReplications(avg):
                         means.append(mean)
                         ssws += ssw
                         sizes.append(size)
-                
-                     
+
                 mean, ssw, size = ANOVA.anova_table(means, ssws, sizes)
-                
+
                 groups_mean.append(mean)
                 groups_ssw += ssw
                 groups_size.append(size)
-                
+
                 se = stdError(means)
                 res.at[index, column] = str(round(mean, 2)) + " ± " + str(round(se, 1))
 
-            LSD[column], charGroup = ANOVA.perform_anova(groups_mean, groups_ssw, groups_size)
+            LSD[column], charGroup = ANOVA.perform_anova(
+                groups_mean, groups_ssw, groups_size
+            )
             for index, value in series.items():
                 res.at[index, column] += get_super(charGroup[index])
     res = res._append(LSD, ignore_index=True)
     return res
-
-res = assessAllReplications(avg)
-# exit()
 
 
 def configChart(res, chartFileName):
@@ -186,7 +182,10 @@ def configChart(res, chartFileName):
 # Open the saved PNG image
 import os
 
-tableDir = "outputs/Table1_Plant_structure_and_Fruit_set.png"
+columns_to_remove = [2, 4, 6, 17, 18]
+df = df.drop(df.columns[columns_to_remove], axis=1)
+avg = experimentCellsToNpArray(df)
+res = assessAllReplications(avg)
 
 configChart(res, tableDir)
 os.system("start " + tableDir)
