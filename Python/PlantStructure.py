@@ -14,6 +14,10 @@ df = df.drop(df.columns[columns_to_remove], axis=1)
 def stdError(values):
     return np.std(values, ddof=1) / np.sqrt(len(values))
 
+# mean, ssw, size
+def calc_mean_mse(data):
+    mean = data.mean()
+    return [mean, sum((val - mean) ** 2 for val in data), len(data)]
 
 def experimentCellsToNpArray(df):
     df.columns = [
@@ -54,10 +58,10 @@ def experimentCellsToNpArray(df):
             treatmentName = getTreatmentName(treatment)
 
             # average of next 5 cells
-            def calculate_avg_se(row_index, column_name):
+            def get_cell(row_index, column_name):
                 try:
                     values = df.iloc[row_index : row_index + 5][column_name].values
-                    return values
+                    return calc_mean_mse(values)
                 except IndexError:
                     return "-"
 
@@ -70,15 +74,15 @@ def experimentCellsToNpArray(df):
                     and column != "Treatment"
                     and column != "Fruit set"
                 ):
-                    newExperiment[column] = calculate_avg_se(index, column)
+                    newExperiment[column] = get_cell(index, column)
 
             fruit_set = []
             for i in range(1, 6):
                 col = "Fruit set " + str(i)
-                mean = newExperiment[col].mean()
+                mean = newExperiment[col][0]
                 if np.isnan(mean) != True:
                     fruit_set.append(mean * 100)
-            newExperiment["Fruit set"] = np.array(fruit_set)
+            newExperiment["Fruit set"] = calc_mean_mse(np.array(fruit_set))
 
             res = res._append(newExperiment, ignore_index=True)
 
@@ -116,41 +120,47 @@ def assessAllReplications(avg):
     LSD = pd.Series(index=res.columns)
     res["Treatment"] = avg["Treatment"].unique()
     LSD["Treatment"] = "LSD" + get_sub("(0.05)")
-    ses = []
+
+    nrows = len(res["Treatment"])
 
     for column, series in res.items():
         if column != "Treatment":
-            group_data = []
-            for index, value in series.items():
+            groups_mean = []
+            groups_ssw = 0
+            groups_size = []
+            for index in range(nrows):
                 treatment = res.at[index, "Treatment"]
                 filtered_values = avg[avg["Treatment"] == treatment]
 
                 vals = filtered_values[column].tolist()
-                arr = []
-                elements = []
+                means = []
+                ssws = 0
+                sizes = []
 
-                for x in vals:
-                    if x is not None:
-                        arr.append(x.mean())
-                        elements.extend(x)
-
-                arr = np.array(arr)
-                mean = arr.mean()
-                se = stdError(arr)
-                group_data.append(elements)
-                ses.append(se)
-
+                for mean, ssw, size in vals:
+                    if mean is not None:
+                        means.append(mean)
+                        ssws += ssw
+                        sizes.append(size)
+                
+                     
+                mean, ssw, size = ANOVA.anova_table(means, ssws, sizes)
+                
+                groups_mean.append(mean)
+                groups_ssw += ssw
+                groups_size.append(size)
+                
+                se = stdError(means)
                 res.at[index, column] = str(round(mean, 2)) + " ± " + str(round(se, 1))
 
-            LSD[column], charGroup = ANOVA.perform_anova(group_data)
-
+            LSD[column], charGroup = ANOVA.perform_anova(groups_mean, groups_ssw, groups_size)
             for index, value in series.items():
                 res.at[index, column] += get_super(charGroup[index])
     res = res._append(LSD, ignore_index=True)
     return res
 
-
 res = assessAllReplications(avg)
+# exit()
 
 
 def configChart(res, chartFileName):

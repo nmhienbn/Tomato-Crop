@@ -1,8 +1,6 @@
-from scipy.stats import f_oneway
+from scipy.stats import f, studentized_range
 import numpy as np
-from scipy.stats import studentized_range
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-import networkx as nx
+import TukeyHSD
 
 
 def calculate_mse(data):
@@ -16,61 +14,41 @@ def calculate_mse(data):
     return mse
 
 
-def perform_anova(data, alpha=0.05):
+def perform_anova(groups_mean,groups_ssw,groups_size, alpha=0.05):
     # Perform ANOVA test
-    f_statistic, p_value = f_oneway(*data)
+    mean, sstot, size = anova_table(groups_mean,groups_ssw,groups_size)
+    nGroups = len(groups_mean)
+    dfb = nGroups - 1
+    dfw = size - nGroups
+    ssb = sum([(x - mean) ** 2 * size for x, size in zip(groups_mean, groups_size)])
+    ssw = sstot - ssb
+    msw = ssw / dfw
+    msb = ssb / dfb
+    f_value = msb / msw
+    p_value = f.sf(f_value, dfb, dfw)
+    # print(mean, ssw, size, dfw, dfb, ssb, msw, msb, f_value, p_value)
+    
 
-    charGroup = [""] * len(data)
+    charGroup = [""] * nGroups
+    # print(nGroups)
     # Check the significance level
     if p_value < alpha:
         # Reject the null hypothesis: Significant differences between group means.
-        # Calculate MSE, and dfw
-        mse = calculate_mse(data)
-        n_per_group = len(data[0])
 
         # Extract Turkey's HSD values
         q_crit = studentized_range.ppf(1 - alpha, 12, 10 * 12 - 12)
 
-        lsd = q_crit * np.sqrt(2 * mse / n_per_group)
+        n_per_group = size / nGroups
+        lsd = q_crit * np.sqrt(2 * msw / n_per_group)
 
-        charGroup = TurkeyHSD(data, lsd)
+        charGroup = TukeyHSD.getLabels(groups_mean, lsd)
         lsd = round(lsd, 2)
     else:
         lsd = "ns"
     return lsd, charGroup
 
-
-def find_maximal_cliques(edges):
-    G = nx.Graph(edges)
-    cliques = list(nx.find_cliques(G))
-
-    # Sort each clique individually
-    sorted_cliques = [sorted(clique) for clique in cliques]
-
-    # Sort all cliques alphabetically
-    sorted_cliques.sort()
-
-    return sorted_cliques
-
-
-def TurkeyHSD(data, lsd):
-    # Perform Tukey's HSD test
-    mean = [np.mean(group) for group in data]
-
-    significant_pairs = []
-    for i in range(len(data)):
-        for j in range(i + 1, len(data)):
-            if np.abs(np.mean(data[i]) - np.mean(data[j])) < lsd:
-                significant_pairs.append((i, j))
-
-    # Find maximal cliques
-    maximal_cliques = find_maximal_cliques(significant_pairs)
-    charGroup = [""] * len(data)
-    current_letter = "a"
-    # Set the character group
-    for clique in maximal_cliques:
-        if len(clique) > 1:
-            for index in clique:
-                charGroup[index] += current_letter
-            current_letter = chr(ord(current_letter) + 1)
-    return charGroup
+def anova_table(groups_mean,groups_ssw,groups_size):
+    mean = sum([mean * size for mean, size in zip(groups_mean, groups_size)]) / sum(groups_size)
+    ssb = sum([(x - mean) ** 2 * size for x, size in zip(groups_mean, groups_size)])
+    sstot = groups_ssw + ssb
+    return mean,sstot, sum(groups_size)
