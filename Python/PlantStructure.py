@@ -88,6 +88,21 @@ def experimentCellsToNpArray(df):
 avg = experimentCellsToNpArray(df)
 
 
+# function to convert to superscript
+def get_super(x):
+    normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
+    super_s = "ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
+    res = x.maketrans("".join(normal), "".join(super_s))
+    return x.translate(res)
+
+
+def get_sub(x):
+    normal = "0123456789+-=()."
+    sub_s = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎."
+    res = x.maketrans("".join(normal), "".join(sub_s))
+    return x.translate(res)
+
+
 def assessAllReplications(avg):
     res = pd.DataFrame(
         columns=[
@@ -100,7 +115,7 @@ def assessAllReplications(avg):
     )
     LSD = pd.Series(index=res.columns)
     res["Treatment"] = avg["Treatment"].unique()
-    LSD["Treatment"] = "LSD"
+    LSD["Treatment"] = "LSD" + get_sub("(0.05)")
     ses = []
 
     for column, series in res.items():
@@ -127,10 +142,10 @@ def assessAllReplications(avg):
 
                 res.at[index, column] = str(round(mean, 2)) + " ± " + str(round(se, 1))
 
-            for x in group_data:
-                print(stdError(x))
-            print(column)
-            LSD[column] = ANOVA.perform_anova(group_data)
+            LSD[column], charGroup = ANOVA.perform_anova(group_data)
+
+            for index, value in series.items():
+                res.at[index, column] += get_super(charGroup[index])
     res = res._append(LSD, ignore_index=True)
     return res
 
