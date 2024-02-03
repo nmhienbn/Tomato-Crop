@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ANOVA
 
-excel_file_path = "TomatoData.xlsx"
+excel_file_path = "resources/TomatoData.xlsx"
 df = pd.read_excel(excel_file_path, sheet_name="Plant structure and fruit set")
 meanTables = pd.DataFrame()
 
@@ -165,5 +165,7 @@ def configChart(res, chartFileName):
 # Open the saved PNG image
 import os
 
-configChart(res, "output_image.png")
-os.system("output_image.png")
+tableDir = "outputs/Table2_Plant_structure_and_Fruit_set.png"
+
+configChart(res, tableDir)
+os.system("start " + tableDir)

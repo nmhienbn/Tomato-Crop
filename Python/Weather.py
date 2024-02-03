@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-excel_file_path = "TomatoData.xlsx"
+excel_file_path = "resources/TomatoData.xlsx"
 df = pd.read_excel(excel_file_path, sheet_name="Figure 1_Environmental data")
 
 
@@ -107,8 +107,10 @@ plt.tight_layout()
 # Display the plots
 # plt.show()
 
+chartDir = "outputs/Figure1_Weather_Data.png"
+
 # Save the chart as a PNG file
-plt.savefig("chart.png")
+plt.savefig(chartDir)
 
 # Open the saved PNG file using the default image viewer
-os.system("start chart.png")
+os.system("start " + chartDir)

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ANOVA
 
-excel_file_path = "TomatoData.xlsx"
+excel_file_path = "resources/TomatoData.xlsx"
 df = pd.read_excel(excel_file_path, sheet_name="Plant structure and fruit set")
 meanTables = pd.DataFrame()
 
@@ -15,7 +15,7 @@ def stdError(values):
     return np.std(values, ddof=1) / np.sqrt(len(values))
 
 
-def calcAverage(df):
+def experimentCellsToNpArray(df):
     df.columns = [
         "Treatment",
         "First truss\nheight",
@@ -56,8 +56,8 @@ def calcAverage(df):
             # average of next 5 cells
             def calculate_avg_se(row_index, column_name):
                 try:
-                    values = df.iloc[row_index : row_index + 5][column_name]
-                    return [values.mean(), np.std(values, ddof=1)]
+                    values = df.iloc[row_index : row_index + 5][column_name].values
+                    return values
                 except IndexError:
                     return "-"
 
@@ -71,22 +71,21 @@ def calcAverage(df):
                     and column != "Fruit set"
                 ):
                     newExperiment[column] = calculate_avg_se(index, column)
-            fruit_set = pd.Series()
+
+            fruit_set = []
             for i in range(1, 6):
                 col = "Fruit set " + str(i)
-                fruit_set[col] = newExperiment[col][0]
-            newExperiment["Fruit set"] = [
-                fruit_set.mean() * 100,
-                np.std(fruit_set, ddof=1),
-            ]
+                mean = newExperiment[col].mean()
+                if np.isnan(mean) != True:
+                    fruit_set.append(mean * 100)
+            newExperiment["Fruit set"] = np.array(fruit_set)
+
             res = res._append(newExperiment, ignore_index=True)
 
     return res
 
 
-avg = calcAverage(df)
-
-LSD = []
+avg = experimentCellsToNpArray(df)
 
 
 def assessAllReplications(avg):
@@ -102,10 +101,8 @@ def assessAllReplications(avg):
     LSD = pd.Series(index=res.columns)
     res["Treatment"] = avg["Treatment"].unique()
     LSD["Treatment"] = "LSD"
+    ses = []
 
-    group_means = []
-    group_ses = []
-    group_sizes = []
     for column, series in res.items():
         if column != "Treatment":
             group_data = []
@@ -113,23 +110,32 @@ def assessAllReplications(avg):
                 treatment = res.at[index, "Treatment"]
                 filtered_values = avg[avg["Treatment"] == treatment]
 
-                vals = filtered_values[column].apply(lambda x: x[0] if x else None)
-                mean = vals.mean()
-                se = stdError(vals)
+                vals = filtered_values[column].tolist()
+                arr = []
+                elements = []
+
+                for x in vals:
+                    if x is not None:
+                        arr.append(x.mean())
+                        elements.extend(x)
+
+                arr = np.array(arr)
+                mean = arr.mean()
+                se = stdError(arr)
+                group_data.append(elements)
+                ses.append(se)
 
                 res.at[index, column] = str(round(mean, 2)) + " ± " + str(round(se, 1))
-                group_data.append(vals)
-                group_means.append(mean)
-                group_ses.append(se)
-            LSD[column] = ANOVA.ANOVA(group_data, group_ses)
+
+            for x in group_data:
+                print(stdError(x))
+            print(column)
+            LSD[column] = ANOVA.perform_anova(group_data)
     res = res._append(LSD, ignore_index=True)
     return res
 
 
 res = assessAllReplications(avg)
-
-
-# ANOVA.ANOVA(g9roup_means, group_ses, group_sizes)
 
 
 def configChart(res, chartFileName):
@@ -155,5 +161,7 @@ def configChart(res, chartFileName):
 # Open the saved PNG image
 import os
 
-configChart(res, "output_image.png")
-os.system("output_image.png")
+tableDir = "outputs/Table2_Plant_structure_and_Fruit_set.png"
+
+configChart(res, tableDir)
+os.system("start " + tableDir)
