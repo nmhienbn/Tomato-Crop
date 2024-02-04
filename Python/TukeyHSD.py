@@ -36,3 +36,19 @@ def getLabels(groups_mean, lsd):
                 charGroup[index] += current_letter
             current_letter = chr(ord(current_letter) + 1)
     return charGroup
+
+
+# function to convert to superscript
+def get_superscript(x):
+    normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
+    super_s = "ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
+    res = x.maketrans("".join(normal), "".join(super_s))
+    return x.translate(res)
+
+
+# function to convert to subscript
+def get_subscript(x):
+    normal = "0123456789+-=()."
+    sub_s = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎."
+    res = x.maketrans("".join(normal), "".join(sub_s))
+    return x.translate(res)

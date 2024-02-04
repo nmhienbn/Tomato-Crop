@@ -14,9 +14,9 @@ def calculate_mse(data):
     return mse
 
 
-def perform_anova(groups_mean,groups_ssw,groups_size, alpha=0.05):
+def perform_anova(groups_mean, groups_ssw, groups_size, alpha=0.05):
     # Perform ANOVA test
-    mean, sstot, size = anova_table(groups_mean,groups_ssw,groups_size)
+    mean, sstot, size = anova_table(groups_mean, groups_ssw, groups_size)
     nGroups = len(groups_mean)
     dfb = nGroups - 1
     dfw = size - nGroups
@@ -27,7 +27,6 @@ def perform_anova(groups_mean,groups_ssw,groups_size, alpha=0.05):
     f_value = msb / msw
     p_value = f.sf(f_value, dfb, dfw)
     # print(mean, ssw, size, dfw, dfb, ssb, msw, msb, f_value, p_value)
-    
 
     charGroup = [""] * nGroups
     # print(nGroups)
@@ -47,8 +46,12 @@ def perform_anova(groups_mean,groups_ssw,groups_size, alpha=0.05):
         lsd = "ns"
     return lsd, charGroup
 
-def anova_table(groups_mean,groups_ssw,groups_size):
-    mean = sum([mean * size for mean, size in zip(groups_mean, groups_size)]) / sum(groups_size)
+
+# return mean, sstot, size
+def anova_table(groups_mean, groups_ssw, groups_size):
+    mean = sum([mean * size for mean, size in zip(groups_mean, groups_size)]) / sum(
+        groups_size
+    )
     ssb = sum([(x - mean) ** 2 * size for x, size in zip(groups_mean, groups_size)])
     sstot = groups_ssw + ssb
-    return mean,sstot, sum(groups_size)
+    return mean, sstot, sum(groups_size)

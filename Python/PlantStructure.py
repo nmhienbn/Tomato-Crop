@@ -1,7 +1,8 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 import ANOVA
+import TukeyHSD
+import TreatmentName
 
 excel_file_path = "resources/TomatoData.xlsx"
 tableDir = "outputs/Table1_Plant_structure_and_Fruit_set.png"
@@ -40,22 +41,11 @@ def experimentCellsToNpArray(df):
     res.insert(0, "Replication", "-")
     res["Fruit set"] = "-"
 
-    def isTreatmentName(treatment):
-        if isinstance(treatment, str):
-            code = treatment.split("-")
-            return len(code) == 3 and int(code[1]) <= 4 and int(code[2]) <= 3
-        else:
-            return False
-
-    def getTreatmentName(treatment):
-        str = treatment.split("-")
-        return [str[0], "S" + str[1] + "T" + str[2]]
-
     # Loop through all rows
     for index, row in df.iterrows():
         treatment = row["Treatment"]
-        if isTreatmentName(treatment):
-            treatmentName = getTreatmentName(treatment)
+        if TreatmentName.check(treatment):
+            treatmentName = TreatmentName.standard(treatment)
 
             # average of next cells
             def get_cell(row_index, column_name):
@@ -90,21 +80,6 @@ def experimentCellsToNpArray(df):
     return res
 
 
-# function to convert to superscript
-def get_super(x):
-    normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
-    super_s = "ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
-    res = x.maketrans("".join(normal), "".join(super_s))
-    return x.translate(res)
-
-
-def get_sub(x):
-    normal = "0123456789+-=()."
-    sub_s = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎."
-    res = x.maketrans("".join(normal), "".join(sub_s))
-    return x.translate(res)
-
-
 def assessAllReplications(avg):
     res = pd.DataFrame(
         columns=[
@@ -117,7 +92,7 @@ def assessAllReplications(avg):
     )
     LSD = pd.Series(index=res.columns)
     res["Treatment"] = avg["Treatment"].unique()
-    LSD["Treatment"] = "LSD" + get_sub("(0.05)")
+    LSD["Treatment"] = "LSD" + TukeyHSD.get_subscript("(0.05)")
 
     nrows = len(res["Treatment"])
 
@@ -154,38 +129,19 @@ def assessAllReplications(avg):
                 groups_mean, groups_ssw, groups_size
             )
             for index, value in series.items():
-                res.at[index, column] += get_super(charGroup[index])
+                res.at[index, column] += TukeyHSD.get_superscript(charGroup[index])
     res = res._append(LSD, ignore_index=True)
     return res
 
 
-def configChart(res, chartFileName):
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=300)
-    ax.axis("tight")
-    ax.axis("off")
-    table = ax.table(
-        cellText=res.values,
-        colLabels=res.columns,
-        cellLoc="center",
-        loc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(6)
-    table.auto_set_column_width([0, 1, 2])  # Specify the indices of columns to adjust
-    for cell in table._cells:
-        if cell[0] == 0:  # Check if it's the first row
-            cell_obj = table._cells[cell]
-            cell_obj.set_height(cell_obj.get_height() * 1.5)
-    plt.savefig(chartFileName, bbox_inches="tight")
-
-
 # Open the saved PNG image
 import os
+import StatisticsPNG as SPNG
 
 columns_to_remove = [2, 4, 6, 17, 18]
 df = df.drop(df.columns[columns_to_remove], axis=1)
 avg = experimentCellsToNpArray(df)
 res = assessAllReplications(avg)
 
-configChart(res, tableDir)
+SPNG.configTable(res, tableDir)
 os.system("start " + tableDir)

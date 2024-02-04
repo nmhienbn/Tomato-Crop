@@ -64,44 +64,28 @@ res_after_transplanting = res[(res["Weeknum"] >= 1) & (res["Weeknum"] <= 13)]
 fig, axes = plt.subplots(1, 2, figsize=(12, 4), gridspec_kw={"wspace": 0.5})
 
 
-def configChart(axes, dataType, yLabel, xRange, yRange):
-    axes.plot(
-        res_after_transplanting["Weeknum"],
-        res_after_transplanting[dataType + "Max"],
-        label="Max",
-        marker="D",
-        color="#4F83BC",
-    )
-    axes.plot(
-        res_after_transplanting["Weeknum"],
-        res_after_transplanting[dataType + "Avg"],
-        label="Average",
-        marker="s",
-        color="#BC5451",
-    )
-    axes.plot(
-        res_after_transplanting["Weeknum"],
-        res_after_transplanting[dataType + "Min"],
-        label="Min",
-        marker="^",
-        color="#8FB965",
-    )
+import StatisticsPNG as SPNG
 
-    # Set chart title and axes labels
-    axes.set_xlabel("Weeks after Transplanting")
-    axes.set_ylabel(yLabel)
-    # Add legend
-    axes.legend()
-    # Set axis limits
-    axes.set_yticks(xRange)
-    axes.set_xticks(yRange)
-    axes.grid(axis="y")
-
-
-configChart(
-    axes[0], "°C ", "Temperature (° C)", np.arange(5, 31, 5), np.arange(1, 14, 1)
+SPNG.lineChartMaxAvgMin(
+    res_after_transplanting,
+    axes[0],
+    "Weeknum",
+    "°C ",
+    "Weeks after Transplanting",
+    "Temperature (° C)",
+    np.arange(5, 31, 5),
+    np.arange(1, 14, 1),
 )
-configChart(axes[1], "RH ", "Humidity (%)", np.arange(20, 101, 20), np.arange(1, 14, 1))
+SPNG.lineChartMaxAvgMin(
+    res_after_transplanting,
+    axes[1],
+    "Weeknum",
+    "RH ",
+    "Weeks after Transplanting",
+    "Humidity (%)",
+    np.arange(20, 101, 20),
+    np.arange(1, 14, 1),
+)
 # Adjust layout to prevent clipping of titles
 plt.tight_layout()
 # Display the plots
