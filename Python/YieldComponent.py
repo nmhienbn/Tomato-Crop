@@ -13,6 +13,7 @@ tableDir = "outputs/Table_tmp_Yield_Component.png"
 table2Dir = "outputs/Table2_Spacing.png"
 table3Dir = "outputs/Table3_Truss.png"
 table4Dir = "outputs/Table4_Treatment.png"
+table5Dir = "outputs/Table5_TreatmentTruss.png"
 Fig2Dir = "outputs/Fig2_Yield.png"
 workbook = load_workbook(excel_file_path)
 
@@ -53,18 +54,13 @@ def readExcelSheet(sheet):
 df_data, df_color = readExcelSheet(sheet)
 
 
-def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
+def experimentCellsToNpArray(df_data, df_color, numExperiments=5, maxTruss=4):
     res = pd.DataFrame(
         columns=[
             "Replication",
             "Treatment",
             "Spacing",
             "Truss",
-            # "Truss 1",
-            # "Truss 2",
-            # "Truss 3",
-            # "Truss 4",
-            # "Truss 5",
             "Number of\nfruit",
             "Average fruit\nweight",
             "Individual\nFruit Yield",
@@ -77,6 +73,14 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
             "Marketable Fruit\nWeight 2Ws",
             "Individual Marketable\nFruit Yield 2Ws",
             "Marketable Fruit\nYield 2Ws",
+            "Yield Truss 1",
+            "Yield Truss 2",
+            "Yield Truss 3",
+            "Yield Truss 4",
+            "Marketable Yield\nTruss 1",
+            "Marketable Yield\nTruss 2",
+            "Marketable Yield\nTruss 3",
+            "Marketable Yield\nTruss 4",
         ]
     )
 
@@ -86,6 +90,7 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
         if TreatmentName.check(treatment):
             replication, Spacing, Truss = TreatmentName.standard3(treatment)
             treatment = TreatmentName.standard(treatment)[1]
+            nPlants = density_from_spacing[Spacing]
 
             # count next rows
             start_index = index + 1
@@ -95,50 +100,53 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
             # [start_index, end_index) is the range of data
 
             numTruss = Truss + 1
-            cnt = [0] * numTruss
-            cnt_marketable = [0] * numTruss
-            sum = [0] * numTruss
-            sum_marketable = [0] * numTruss
+            (trussYield, trussMarketable) = (
+                [[] for _ in range(maxTruss)] for _ in range(2)
+            )
 
-            cntExperiments = 0
-            for i in range(numExperiments):
-                if pd.notna(df_data.iat[start_index, i * numTruss + 1]):
-                    cntExperiments += 1
-
-            cnt_plant = [0] * cntExperiments
-            cnt_marketable_plant = [0] * cntExperiments
-
-            sum_plant = [0] * cntExperiments
-            sum_marketable_plant = [0] * cntExperiments
-
-            cnt_marketable_2w = [0] * cntExperiments
-            sum_marketable_2w = [0] * cntExperiments
+            (
+                cnt_plant,
+                sum_plant,
+                cnt_marketable_plant,
+                sum_marketable_plant,
+                cnt_marketable_plant_2w,
+                sum_marketable_plant_2w,
+            ) = ([] for _ in range(6))
 
             def check2w(color):
                 return color != "FF00B0F0"
 
             cur_col = 0
-            for i in range(cntExperiments):
-                for j in range(0, numTruss):
+            for expId in range(numExperiments):
+                (total, marketable, marketable_2w) = ([] for _ in range(3))
+                for trussId in range(0, numTruss):
+                    trussYield_plant = 0
+                    trussMarketable_plant = 0
+
                     cur_col += 1
                     for k in range(start_index, end_index):
                         if pd.notna(df_data.iat[k, cur_col]):
-                            sum[j] += df_data.iat[k, cur_col]
-                            cnt[j] += 1
+                            trussYield_plant += df_data.iat[k, cur_col]
 
-                            sum_plant[i] += df_data.iat[k, cur_col]
-                            cnt_plant[i] += 1
+                            total.append(df_data.iat[k, cur_col])
 
                             if df_data.iat[k, cur_col] > 60:
-                                sum_marketable[j] += df_data.iat[k, cur_col]
-                                cnt_marketable[j] += 1
+                                trussMarketable_plant += df_data.iat[k, cur_col]
 
-                                sum_marketable_plant[i] += df_data.iat[k, cur_col]
-                                cnt_marketable_plant[i] += 1
+                                marketable.append(df_data.iat[k, cur_col])
 
                                 if check2w(df_color.iat[k, cur_col]):
-                                    sum_marketable_2w[i] += df_data.iat[k, cur_col]
-                                    cnt_marketable_2w[i] += 1
+                                    marketable_2w.append(df_data.iat[k, cur_col])
+
+                    trussYield[trussId].append(trussYield_plant * nPlants)
+                    trussMarketable[trussId].append(trussMarketable_plant * nPlants)
+                if len(total) > 0:
+                    cnt_plant.append(len(total))
+                    sum_plant.append(np.sum(total))
+                    cnt_marketable_plant.append(len(marketable))
+                    sum_marketable_plant.append(np.sum(marketable))
+                    cnt_marketable_plant_2w.append(len(marketable_2w))
+                    sum_marketable_plant_2w.append(np.sum(marketable_2w))
 
             nPlants = density_from_spacing[Spacing]
 
@@ -171,20 +179,31 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
                 Individual_Marketable_Fruit_Yield[2],
             ]
 
-            Marketable_Fruit_Number_2Ws = ANOVA.calc_mean_sstot_size(cnt_marketable_2w)
+            Marketable_Fruit_Number_2Ws = ANOVA.calc_mean_sstot_size(
+                cnt_marketable_plant_2w
+            )
             Marketable_Fruit_Weight_2Ws = ANOVA.calc_mean_sstot_size(
                 [
                     x / y if y != 0 else 0
-                    for x, y in zip(sum_marketable_2w, cnt_marketable_2w)
+                    for x, y in zip(sum_marketable_plant_2w, cnt_marketable_plant_2w)
                 ]
             )
             Individual_Marketable_Fruit_Yield_2Ws = ANOVA.calc_mean_sstot_size(
-                sum_marketable_2w
+                sum_marketable_plant_2w
             )
             Marketable_Fruit_Yield_2Ws = [
                 Individual_Marketable_Fruit_Yield_2Ws[0] * nPlants,
                 Individual_Marketable_Fruit_Yield_2Ws[1] * (nPlants**2),
                 Individual_Marketable_Fruit_Yield_2Ws[2],
+            ]
+
+            trussYield = [
+                ANOVA.calc_mean_sstot_size(x) if len(x) > 0 else [np.nan] * 3
+                for x in trussYield
+            ]
+            trussMarketable = [
+                ANOVA.calc_mean_sstot_size(x) if len(x) > 0 else [np.nan] * 3
+                for x in trussMarketable
             ]
 
             res.loc[len(res)] = (
@@ -204,6 +223,14 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
                 Marketable_Fruit_Weight_2Ws,
                 Individual_Marketable_Fruit_Yield_2Ws,
                 Marketable_Fruit_Yield_2Ws,
+                trussYield[0],
+                trussYield[1],
+                trussYield[2],
+                trussYield[3],
+                trussMarketable[0],
+                trussMarketable[1],
+                trussMarketable[2],
+                trussMarketable[3],
             )
     return res
 
@@ -237,23 +264,38 @@ def getAvgAllReplication(avg):
 
 tmp = getAvgAllReplication(avg)
 
+cols_to_show = [
+    "Number of\nfruit",
+    "Average fruit\nweight",
+    "Individual\nFruit Yield",
+    "Fruit Yield",
+    "Number of\nmarketable fruit",
+    "Average marketable\nfruit weight",
+    "Individual Marketable\nFruit Yield",
+    "Marketable\nFruit Yield",
+]
+
 
 def groupSpacing(df):
     res = pd.DataFrame(columns=df.columns)
     res.drop(columns=["Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Spacing")
+    return ANOVA.ANOVA_test_summary_table(df, res, "Spacing")[
+        ["Spacing"] + cols_to_show
+    ]
 
 
 def groupTruss(df):
     res = pd.DataFrame(columns=df.columns)
     res.drop(columns=["Spacing"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Truss")
+    return ANOVA.ANOVA_test_summary_table(df, res, "Truss")[["Truss"] + cols_to_show]
 
 
 def groupTreatment(df):
     res = pd.DataFrame(columns=df.columns)
     res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment")
+    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment")[
+        ["Treatment"] + cols_to_show
+    ]
 
 
 def groupTreatmentnoANOVA(df):
@@ -261,22 +303,46 @@ def groupTreatmentnoANOVA(df):
     res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
     return ANOVA.ANOVA_test_summary_table(
         df, res, "Treatment", needMSE=False, ANOVAtest=False
-    )
+    )[
+        [
+            "Treatment",
+            "Fruit Yield",
+            "Marketable\nFruit Yield",
+            "Marketable Fruit\nYield 2Ws",
+        ]
+    ]
+
+
+def groupTreatmentTrussnoANOVA(df):
+    res = pd.DataFrame(columns=df.columns)
+    res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
+    return ANOVA.ANOVA_test_summary_table(
+        df, res, "Treatment", needMSE=True, ANOVAtest=False
+    )[
+        [
+            "Treatment",
+            "Yield Truss 1",
+            "Yield Truss 2",
+            "Yield Truss 3",
+            "Yield Truss 4",
+            "Marketable Yield\nTruss 1",
+            "Marketable Yield\nTruss 2",
+            "Marketable Yield\nTruss 3",
+            "Marketable Yield\nTruss 4",
+        ]
+    ]
 
 
 Table2 = groupSpacing(tmp)
 Table3 = groupTruss(tmp)
 Table4 = groupTreatment(avg)
+Table5 = groupTreatmentTrussnoANOVA(avg)
+Fig2Table = groupTreatmentnoANOVA(avg)
 
 
 # # Open the saved PNG image
 import os
 import StatisticsPNG as SPNG
-
-# columns_to_remove = [2, 4, 6, 17, 18]
-# df = df.drop(df.columns[columns_to_remove], axis=1)
-# avg = experimentCellsToNpArray(df)
-# res = assessAllReplications(avg)
 
 # SPNG.configTable(tmp, tableDir)
 # os.system("start " + tableDir)
@@ -290,14 +356,8 @@ os.system("start " + table3Dir)
 SPNG.configTable(Table4, table4Dir)
 os.system("start " + table4Dir)
 
-Fig2Table = groupTreatmentnoANOVA(avg)
-custom_labels = [row["Treatment"] for _, row in Fig2Table.iterrows()]
-SPNG.colChart(
-    Fig2Table,
-    ["Fruit Yield", "Marketable\nFruit Yield", "Marketable Fruit\nYield 2Ws"],
-    custom_labels,
-    "Treatments",
-    "Yield",
-    Fig2Dir,
-)
+SPNG.configTable(Table5, table5Dir)
+os.system("start " + table5Dir)
+
+SPNG.colChart(Fig2Table, Fig2Dir)
 os.system("start " + Fig2Dir)

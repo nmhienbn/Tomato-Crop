@@ -133,7 +133,7 @@ def ANOVA_test_summary_table(
 
                 if needMSE:
                     summaryDf.at[index, column] = (
-                        str(round(mean, 2)) + " ± " + str(round(mse, 1))
+                        "" if np.isnan(mean) else f"{round(mean, 2)} ± {round(mse, 1)}"
                     )
                 elif ANOVAtest:
                     summaryDf.at[index, column] = str(round(mean, 2))

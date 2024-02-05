@@ -31,12 +31,16 @@ def lineChartMaxAvgMin(dataFrame, axes, xAxis, yAxis, xLabel, yLabel, xRange, yR
 
 def colChart(
     df: pd.DataFrame,
-    columns_to_plot: list,
-    x_col: list,
-    x_label: str,
-    y_label: str,
     chart_file_name: str,
 ):
+    columns_to_plot = [
+        "Fruit Yield",
+        "Marketable\nFruit Yield",
+        "Marketable Fruit\nYield 2Ws",
+    ]
+    x_col = [row["Treatment"] for _, row in df.iterrows()]
+    x_label = "Treatments"
+    y_label = "Yield"
     # Extract values and errors separately for each column
     values = [[x[0] for x in val] for val in df[columns_to_plot].values]
     errors = [[x[1] for x in val] for val in df[columns_to_plot].values]
