@@ -61,7 +61,7 @@ print(res)
 
 # Plot line charts for each column
 res_after_transplanting = res[(res["Weeknum"] >= 1) & (res["Weeknum"] <= 13)]
-fig, axes = plt.subplots(1, 2, figsize=(12, 4), gridspec_kw={"wspace": 0.5})
+fig, axes = plt.subplots(1, 2, figsize=(15, 5), gridspec_kw={"wspace": 0.5})
 
 
 import StatisticsPNG as SPNG
@@ -94,7 +94,7 @@ plt.tight_layout()
 chartDir = "outputs/Figure1_Weather_Data.png"
 
 # Save the chart as a PNG file
-plt.savefig(chartDir)
+plt.savefig(chartDir, dpi=300)
 
 # Open the saved PNG file using the default image viewer
 os.system("start " + chartDir)

@@ -31,9 +31,12 @@ def getLabels(groups_mean, lsd):
     current_letter = "a"
     # Set the character group
     for clique in maximal_cliques:
-        if len(clique) > 1:
-            for index in clique:
-                charGroup[index] += current_letter
+        for index in clique:
+            charGroup[index] += current_letter
+        current_letter = chr(ord(current_letter) + 1)
+    for i in range(len(charGroup)):
+        if charGroup[i] == "":
+            charGroup[i] += current_letter
             current_letter = chr(ord(current_letter) + 1)
     return charGroup
 

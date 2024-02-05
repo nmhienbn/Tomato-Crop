@@ -9,11 +9,7 @@ from openpyxl.styles import Font
 import TreatmentName
 
 excel_file_path = "resources/TomatoData.xlsx"
-tableDir = "outputs/Table_tmp_Yield_Component.png"
-table2Dir = "outputs/Table2_Spacing.png"
-table3Dir = "outputs/Table3_Truss.png"
-table4Dir = "outputs/Table4_Treatment.png"
-Fig2Dir = "outputs/Fig2_Yield.png"
+tableDir = "outputs/Table2_Yield_Component.png"
 workbook = load_workbook(excel_file_path)
 
 sheet = workbook["Yield components"]
@@ -65,18 +61,19 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
             # "Truss 3",
             # "Truss 4",
             # "Truss 5",
-            "Number of\nfruit",
-            "Average fruit\nweight",
-            "Individual\nFruit Yield",
+            "Number of fruit",
+            "Average fruit weight",
+            "Individual Fruit Yield",
             "Fruit Yield",
-            "Number of\nmarketable fruit",
-            "Average marketable\nfruit weight",
-            "Individual Marketable\nFruit Yield",
-            "Marketable\nFruit Yield",
-            "Marketable Fruit\nNumber 2Ws",
-            "Marketable Fruit\nWeight 2Ws",
-            "Individual Marketable\nFruit Yield 2Ws",
-            "Marketable Fruit\nYield 2Ws",
+            "Number of marketable fruit",
+            "Average marketable fruit weight",
+            "Individual Marketable Fruit Yield",
+            "Marketable Fruit Yield",
+            "Marketable Fruit Number 2Ws",
+            "Marketable Fruit Weight 2Ws",
+            "Individual Marketable Fruit Yield 2Ws",
+            "Marketable Fruit Yield 2Ws",
+            # "Marketable Yield 2Ws",
         ]
     )
 
@@ -144,7 +141,7 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
 
             Number_of_fruit = ANOVA.calc_mean_sstot_size(cnt_plant)
             Average_fruit_weight = ANOVA.calc_mean_sstot_size(
-                [x / y if y != 0 else 0 for x, y in zip(sum_plant, cnt_plant)]
+                [x / y for x, y in zip(sum_plant, cnt_plant) if y != 0]
             )
             Individual_Fruit_Yield = ANOVA.calc_mean_sstot_size(sum_plant)
             Fruit_Yield = [
@@ -158,8 +155,9 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
             )
             Average_marketable_fruit_weight = ANOVA.calc_mean_sstot_size(
                 [
-                    x / y if y != 0 else 0
+                    x / y
                     for x, y in zip(sum_marketable_plant, cnt_marketable_plant)
+                    if y != 0
                 ]
             )
             Individual_Marketable_Fruit_Yield = ANOVA.calc_mean_sstot_size(
@@ -173,10 +171,7 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
 
             Marketable_Fruit_Number_2Ws = ANOVA.calc_mean_sstot_size(cnt_marketable_2w)
             Marketable_Fruit_Weight_2Ws = ANOVA.calc_mean_sstot_size(
-                [
-                    x / y if y != 0 else 0
-                    for x, y in zip(sum_marketable_2w, cnt_marketable_2w)
-                ]
+                [x / y for x, y in zip(sum_marketable_2w, cnt_marketable_2w) if y != 0]
             )
             Individual_Marketable_Fruit_Yield_2Ws = ANOVA.calc_mean_sstot_size(
                 sum_marketable_2w
@@ -187,23 +182,26 @@ def experimentCellsToNpArray(df_data, df_color, numExperiments=5):
                 Individual_Marketable_Fruit_Yield_2Ws[2],
             ]
 
+            def roundl(x, n):
+                return [round(y, n) for y in x]
+
             res.loc[len(res)] = (
                 replication,
                 treatment,
                 Spacing,
                 Truss,
-                Number_of_fruit,
-                Average_fruit_weight,
-                Individual_Fruit_Yield,
-                Fruit_Yield,
-                Number_of_marketable_fruit,
-                Average_marketable_fruit_weight,
-                Individual_Marketable_Fruit_Yield,
-                Marketable_Fruit_Yield,
-                Marketable_Fruit_Number_2Ws,
-                Marketable_Fruit_Weight_2Ws,
-                Individual_Marketable_Fruit_Yield_2Ws,
-                Marketable_Fruit_Yield_2Ws,
+                roundl(Number_of_fruit, 2),
+                roundl(Average_fruit_weight, 2),
+                roundl(Individual_Fruit_Yield, 2),
+                roundl(Fruit_Yield, 2),
+                roundl(Number_of_marketable_fruit, 2),
+                roundl(Average_marketable_fruit_weight, 2),
+                roundl(Individual_Marketable_Fruit_Yield, 2),
+                roundl(Marketable_Fruit_Yield, 2),
+                roundl(Marketable_Fruit_Number_2Ws, 2),
+                roundl(Marketable_Fruit_Weight_2Ws, 2),
+                roundl(Individual_Marketable_Fruit_Yield_2Ws, 2),
+                roundl(Marketable_Fruit_Yield_2Ws, 2),
             )
     return res
 
@@ -228,45 +226,48 @@ def getAvgAllReplication(avg):
                 mean, ssw, size = ANOVA.anova_table(
                     groups_mean, groups_ssw, groups_size
                 )
-                # print(col, mean, ssw, size)
+                print(col, mean, ssw, size)
                 row[col] = [mean, ssw, size]
         res = res._append(row, ignore_index=True)
-    # print(res)
+    print(res)
     return res
 
 
 tmp = getAvgAllReplication(avg)
 
 
-def groupSpacing(df):
-    res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Spacing")
-
-
-def groupTruss(df):
-    res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Spacing"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Truss")
-
-
-def groupTreatment(df):
-    res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment")
-
-
-def groupTreatmentnoANOVA(df):
-    res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(
-        df, res, "Treatment", needMSE=False, ANOVAtest=False
-    )
-
-
-Table2 = groupSpacing(tmp)
-Table3 = groupTruss(tmp)
-Table4 = groupTreatment(avg)
+# res_print = tmp.copy()
+# res_print.columns = [
+#     "Spacing",
+#     "Truss",
+#     # "Truss 1",
+#     # "Truss 2",
+#     # "Truss 3",
+#     # "Truss 4",
+#     # "Truss 5",
+#     "Number of\nfruit",
+#     "Average\nfruit weight",
+#     "Individual\nFruit Yield",
+#     "Fruit Yield",
+#     "Number of\nmarketable fruit",
+#     "Average marketable\nfruit weight",
+#     "Individual Marketable\nFruit Yield",
+#     "Marketable Fruit\nYield",
+#     "Marketable Fruit\nNumber 2Ws",
+#     "Marketable Fruit\nWeight 2Ws",
+#     "Individual Marketable\nFruit Yield 2Ws",
+#     "Marketable Fruit\nYield 2Ws",
+# ]
+# res_print["Spacing"] = res_print["Spacing"].apply(
+#     lambda x: (
+#         f"S{x}" if pd.notna(x) and pd.to_numeric(x, errors="coerce") is not None else x
+#     )
+# )
+# res_print["Truss"] = res_print["Truss"].apply(
+#     lambda x: (
+#         f"T{x}" if pd.notna(x) and pd.to_numeric(x, errors="coerce") is not None else x
+#     )
+# )
 
 
 # # Open the saved PNG image
@@ -278,26 +279,5 @@ import StatisticsPNG as SPNG
 # avg = experimentCellsToNpArray(df)
 # res = assessAllReplications(avg)
 
-# SPNG.configTable(tmp, tableDir)
-# os.system("start " + tableDir)
-
-SPNG.configTable(Table2, table2Dir)
-os.system("start " + table2Dir)
-
-SPNG.configTable(Table3, table3Dir)
-os.system("start " + table3Dir)
-
-SPNG.configTable(Table4, table4Dir)
-os.system("start " + table4Dir)
-
-Fig2Table = groupTreatmentnoANOVA(avg)
-custom_labels = [row["Treatment"] for _, row in Fig2Table.iterrows()]
-SPNG.colChart(
-    Fig2Table,
-    ["Fruit Yield", "Marketable\nFruit Yield", "Marketable Fruit\nYield 2Ws"],
-    custom_labels,
-    "Treatments",
-    "Yield",
-    Fig2Dir,
-)
-os.system("start " + Fig2Dir)
+SPNG.configTable(tmp, tableDir)
+os.system("start " + tableDir)
