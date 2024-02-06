@@ -20,14 +20,19 @@ def getLabels(groups_mean, lsd):
     # Perform Tukey's HSD test
 
     significant_pairs = []
+    is_all = True
     for i in range(len(groups_mean)):
         for j in range(i + 1, len(groups_mean)):
             if np.abs(groups_mean[i] - groups_mean[j]) < lsd:
                 significant_pairs.append((i, j))
+            else:
+                is_all = False
 
     # Find maximal cliques
     maximal_cliques = find_maximal_cliques(significant_pairs)
     charGroup = [""] * len(groups_mean)
+    if is_all:
+        return charGroup
     current_letter = "a"
     # Set the character group
     for clique in maximal_cliques:

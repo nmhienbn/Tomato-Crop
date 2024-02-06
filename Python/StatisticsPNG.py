@@ -29,6 +29,31 @@ def lineChartMaxAvgMin(dataFrame, axes, xAxis, yAxis, xLabel, yLabel, xRange, yR
     axes.grid(axis="y")
 
 
+def weatherChart(dataFrame):
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5), gridspec_kw={"wspace": 0.5})
+    lineChartMaxAvgMin(
+        dataFrame,
+        axes[0],
+        "Weeknum",
+        "°C ",
+        "Weeks after Transplanting",
+        "Temperature (° C)",
+        np.arange(5, 31, 5),
+        np.arange(1, 14, 1),
+    )
+    lineChartMaxAvgMin(
+        dataFrame,
+        axes[1],
+        "Weeknum",
+        "RH ",
+        "Weeks after Transplanting",
+        "Humidity (%)",
+        np.arange(20, 101, 20),
+        np.arange(1, 14, 1),
+    )
+    # plt.tight_layout()
+
+
 def colChart(
     df: pd.DataFrame,
     chart_file_name: str,
@@ -40,7 +65,7 @@ def colChart(
     ]
     x_col = [row["Treatment"] for _, row in df.iterrows()]
     x_label = "Treatments"
-    y_label = "Yield"
+    y_label = "Yield (Tohan/)"
     # Extract values and errors separately for each column
     values = [[x[0] for x in val] for val in df[columns_to_plot].values]
     errors = [[x[1] for x in val] for val in df[columns_to_plot].values]
@@ -57,8 +82,8 @@ def colChart(
     # Calculate the x-coordinates for each group of bars
     x_positions = np.arange(len(df))
 
-    # Plotting the grouped bar chart without error bars
     for i, col in enumerate(columns_to_plot):
+        # Plotting the grouped bar chart without error bars
         ax.bar(
             x_positions + i * bar_width,
             [v[i] for v in values],
@@ -68,14 +93,15 @@ def colChart(
             zorder=2,
         )
 
-    # Plotting the error bars
-    for i, col in enumerate(columns_to_plot):
+        # Plotting the error bars
         ax.errorbar(
             x_positions + i * bar_width,
             [v[i] for v in values],
             yerr=[e[i] for e in errors],
             fmt="none",
+            elinewidth=1,
             capsize=3,
+            capthick=1,
             color="black",
             zorder=1,
         )
@@ -104,21 +130,22 @@ def colChart(
     plt.savefig(chart_file_name, bbox_inches="tight", dpi=300)
 
 
-def configTable(dataFrame, chartFileName):
+def configTable(dataFrame, chartFileName, showIndex=False):
     fig, ax = plt.subplots(figsize=(5, 5), dpi=300)
     ax.axis("tight")
     ax.axis("off")
     table = ax.table(
         cellText=dataFrame.values,
         colLabels=dataFrame.columns,
+        rowLabels=dataFrame.index if showIndex else None,
         cellLoc="center",
         loc="center",
     )
+
     table.auto_set_font_size(False)
     table.set_fontsize(6)
-    table.auto_set_column_width(
-        [i for i in range(len(dataFrame.columns))]
-    )  # Specify the indices of columns to adjust
+    table.auto_set_column_width([i for i in range(len(dataFrame.columns))])
+    # Specify the indices of columns to adjust
     for cell in table._cells:
         if cell[0] == 0:  # Check if it's the first row
             cell_obj = table._cells[cell]

@@ -4,40 +4,27 @@ import ANOVA
 import TreatmentName
 
 excel_file_path = "resources/TomatoData.xlsx"
-df = pd.read_excel(excel_file_path, sheet_name="Plant structure and fruit set")
-
-
-def remove_useless_columns(df):
-    columns_to_remove = [2, 4, 6, 17, 18]
-    df = df.drop(df.columns[columns_to_remove], axis=1)
-    df.columns = [
-        "Treatment",
-        "First truss\nheight",
-        "Last truss\nheight",
-        "Number of\nleaf/plant",
-        "Number of\nflower 1",
-        "Number of\nflower 2",
-        "Number of\nflower 3",
-        "Number of\nflower 4",
-        "Number of\nflower 5",
-        "Fruit set 1",
-        "Fruit set 2",
-        "Fruit set 3",
-        "Fruit set 4",
-        "Fruit set 5",
-    ]
-    return df
+df = pd.read_excel(
+    excel_file_path, sheet_name="Fruit morphology and quality", skiprows=3
+)
 
 
 def experimentCellsToNpArray(df):
     res = pd.DataFrame(columns=df.columns)
     res.insert(0, "Replication", "-")
 
+    def is_number(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
     # take all next cells
     def get_cell(row_index, column_name):
         values = []
         i = row_index
-        while i == row_index or pd.isna(df.at[i, "Treatment"]):
+        while is_number(df.at[i, "No. plant"]):
             values.append(df.at[i, column_name])
             i += 1
         return ANOVA.calc_mean_sstot_size(values)
@@ -47,7 +34,7 @@ def experimentCellsToNpArray(df):
         newExperiment["Replication"] = str(treatmentName[0])
         newExperiment["Treatment"] = treatmentName[1]
         for column, value in row.items():
-            if column not in ["Replication", "Treatment"]:
+            if column not in ["Replication", "Treatment", "No. plant"]:
                 newExperiment[column] = get_cell(index, column)
         return res._append(newExperiment, ignore_index=True)
 
@@ -59,19 +46,8 @@ def experimentCellsToNpArray(df):
                 res = process_row(res, index, row, treatmentName)
         return res
 
-    def calc_fruit_set(res):
-        for index, row in res.iterrows():
-            fruit_set = []
-            for i in range(1, 6):
-                col = "Fruit set " + str(i)
-                if np.isnan(row[col][0]) != True:
-                    fruit_set.append(row[col][0] * 100)
-            res.at[index, "Fruit set"] = ANOVA.calc_mean_sstot_size(fruit_set)
-        return res
-
     res = process_table(df, res)
-    res["Fruit set"] = ""
-    res = calc_fruit_set(res)
+    res.dropna(axis=1, how="all", inplace=True)
     return res
 
 
@@ -79,15 +55,15 @@ def groupSameTreatment(df):
     res = pd.DataFrame(
         columns=[
             "Treatment",
-            "First truss\nheight",
-            "Last truss\nheight",
-            "Number of\nleaf/plant",
-            "Fruit set",
+            "Fruit shape index (I=H/D)",
+            "Number of locule",
+            "Pericarp thickness",
+            "Number of seed/fruit",
+            "Brix",
         ]
     )
-    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment", MSEprecision=1)
+    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment", MSEprecision=2)
 
 
-df = remove_useless_columns(df)
 res = experimentCellsToNpArray(df)
 res = groupSameTreatment(res)

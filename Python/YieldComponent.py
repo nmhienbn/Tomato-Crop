@@ -9,12 +9,6 @@ from openpyxl.styles import Font
 import TreatmentName
 
 excel_file_path = "resources/TomatoData.xlsx"
-tableDir = "outputs/Table_tmp_Yield_Component.png"
-table2Dir = "outputs/Table2_Spacing.png"
-table3Dir = "outputs/Table3_Truss.png"
-table4Dir = "outputs/Table4_Treatment.png"
-table5Dir = "outputs/Table5_TreatmentTruss.png"
-Fig2Dir = "outputs/Fig2_Yield.png"
 workbook = load_workbook(excel_file_path)
 
 sheet = workbook["Yield components"]
@@ -252,7 +246,7 @@ def getAvgAllReplication(avg):
                 groups_ssw = sum([x[1] for x in group_data[col]])
                 groups_size = [x[2] for x in group_data[col]]
 
-                mean, ssw, size = ANOVA.anova_table(
+                mean, ssw, size = ANOVA.summary_data(
                     groups_mean, groups_ssw, groups_size
                 )
                 # print(col, mean, ssw, size)
@@ -277,33 +271,27 @@ cols_to_show = [
 
 
 def groupSpacing(df):
+    df = df[["Spacing"] + cols_to_show]
     res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Spacing")[
-        ["Spacing"] + cols_to_show
-    ]
+    return ANOVA.ANOVA_test_summary_table(df, res, "Spacing")
 
 
 def groupTruss(df):
+    df = df[["Truss"] + cols_to_show]
     res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Spacing"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Truss")[["Truss"] + cols_to_show]
+    return ANOVA.ANOVA_test_summary_table(df, res, "Truss")
 
 
 def groupTreatment(df):
+    df = df[["Treatment"] + cols_to_show]
     res = pd.DataFrame(columns=df.columns)
-    res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment")[
-        ["Treatment"] + cols_to_show
-    ]
+    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment")
 
 
 def groupTreatmentnoANOVA(df):
     res = pd.DataFrame(columns=df.columns)
     res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
-    return ANOVA.ANOVA_test_summary_table(
-        df, res, "Treatment", needMSE=False, ANOVAtest=False
-    )[
+    return ANOVA.ANOVA_test_summary_table(df, res, "Treatment", ANOVAtest=False)[
         [
             "Treatment",
             "Fruit Yield",
@@ -317,7 +305,7 @@ def groupTreatmentTrussnoANOVA(df):
     res = pd.DataFrame(columns=df.columns)
     res.drop(columns=["Replication", "Spacing", "Truss"], inplace=True)
     return ANOVA.ANOVA_test_summary_table(
-        df, res, "Treatment", needMSE=True, ANOVAtest=False
+        df, res, "Treatment", MSEprecision=2, ANOVAtest=False
     )[
         [
             "Treatment",
@@ -333,31 +321,77 @@ def groupTreatmentTrussnoANOVA(df):
     ]
 
 
+def groupMarketableYield2W(df):
+    unique_spacing = df["Spacing"].unique()
+    unique_truss = df["Truss"].unique()
+    df["Treatment"] = "S" + df["Spacing"].astype(str) + "T" + df["Truss"].astype(str)
+
+    df = df[["Treatment", "Marketable Fruit\nYield 2Ws"]]
+    tmp = pd.DataFrame(columns=df.columns)
+    tmp = ANOVA.ANOVA_test_summary_table(df, tmp, "Treatment")
+
+    res = pd.DataFrame(index=unique_spacing, columns=unique_truss)
+    res2 = pd.DataFrame(index=unique_spacing, columns=unique_truss)
+
+    for spacing in unique_spacing:
+        for truss in unique_truss:
+            res.at[spacing, truss] = tmp[(tmp["Treatment"] == f"S{spacing}T{truss}")][
+                "Marketable Fruit\nYield 2Ws"
+            ].values
+            res2.at[spacing, truss] = df[(df["Treatment"] == f"S{spacing}T{truss}")][
+                "Marketable Fruit\nYield 2Ws"
+            ].values[0]
+
+    tmpS = [
+        ANOVA.summary_data(
+            [res2.at[spacing, truss][0] for truss in unique_truss],
+            sum(res2.at[spacing, truss][1] for truss in unique_truss),
+            [res2.at[spacing, truss][2] for truss in unique_truss],
+        )
+        for spacing in unique_spacing
+    ]
+    meanS = [val[0] for val in tmpS]
+    sswS = sum([val[1] for val in tmpS])
+    sizeS = [val[2] for val in tmpS]
+
+    lsdS, charGroupS = ANOVA.perform_anova_summary(meanS, sswS, sizeS, alpha=0.05)
+
+    for i in range(len(meanS)):
+        meanS[i] = str(round(meanS[i], 2)) + TukeyHSD.get_superscript(charGroupS[i])
+
+    tmpT = [
+        ANOVA.summary_data(
+            [res2.at[spacing, truss][0] for spacing in unique_spacing],
+            sum(res2.at[spacing, truss][1] for spacing in unique_spacing),
+            [res2.at[spacing, truss][2] for spacing in unique_spacing],
+        )
+        for truss in unique_truss
+    ]
+
+    meanT = [val[0] for val in tmpT]
+    sswT = sum([val[1] for val in tmpT])
+    sizeT = [val[2] for val in tmpT]
+
+    lsdT, charGroupT = ANOVA.perform_anova_summary(meanT, sswT, sizeT, alpha=0.05)
+
+    for i in range(len(meanT)):
+        meanT[i] = str(round(meanT[i], 2)) + TukeyHSD.get_superscript(charGroupT[i])
+
+    res.index = ["40 × 30", "40 × 35", "40 × 40", "40 × 50"]
+    res.columns = ["2 trusses", "3 trusses", "4 trusses"]
+
+    res["Mean"] = meanS
+    res.loc["Mean"] = meanT + [""]
+    lsd = "LSD" + TukeyHSD.get_subscript("(0.05)")
+    res[lsd] = [""] * len(unique_spacing) + [lsdS]
+    res.loc[lsd] = [""] * len(unique_truss) + [lsdT, ""]
+    # print(res)
+    return res
+
+
 Table2 = groupSpacing(tmp)
 Table3 = groupTruss(tmp)
 Table4 = groupTreatment(avg)
 Table5 = groupTreatmentTrussnoANOVA(avg)
+Table6 = groupMarketableYield2W(tmp)
 Fig2Table = groupTreatmentnoANOVA(avg)
-
-
-# # Open the saved PNG image
-import os
-import StatisticsPNG as SPNG
-
-# SPNG.configTable(tmp, tableDir)
-# os.system("start " + tableDir)
-
-SPNG.configTable(Table2, table2Dir)
-os.system("start " + table2Dir)
-
-SPNG.configTable(Table3, table3Dir)
-os.system("start " + table3Dir)
-
-SPNG.configTable(Table4, table4Dir)
-os.system("start " + table4Dir)
-
-SPNG.configTable(Table5, table5Dir)
-os.system("start " + table5Dir)
-
-SPNG.colChart(Fig2Table, Fig2Dir)
-os.system("start " + Fig2Dir)

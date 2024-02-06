@@ -30,7 +30,7 @@ def perform_anova_summary(
     groups_mean: list, groups_ssw: float, groups_size: list, alpha=0.05
 ):
     # Perform ANOVA test
-    mean, sstot, size = anova_table(groups_mean, groups_ssw, groups_size)
+    mean, sstot, size = summary_data(groups_mean, groups_ssw, groups_size)
     n_groups = len(groups_mean)
     dfb = n_groups - 1
     dfw = size - n_groups
@@ -93,7 +93,7 @@ def perform_anova(data, alpha=0.05):
 
 
 # calc mean, sstot, size from groups
-def anova_table(groups_mean: list, groups_ssw: float, groups_size: list):
+def summary_data(groups_mean: list, groups_ssw: float, groups_size: list):
     mean = sum([mean * size for mean, size in zip(groups_mean, groups_size)]) / sum(
         groups_size
     )
@@ -106,7 +106,7 @@ def ANOVA_test_summary_table(
     df: pd.DataFrame,
     summaryDf: pd.DataFrame,
     groupCol: str,
-    needMSE=False,
+    MSEprecision=-1,
     ANOVAtest=True,
     alpha=0.05,
 ):
@@ -128,12 +128,14 @@ def ANOVA_test_summary_table(
                 means, ssws, sizes = zip(
                     *[(mean, ssw, size) for mean, ssw, size in vals if mean is not None]
                 )
-                mean, ssw, size = anova_table(means, sum(ssws), sizes)
+                mean, ssw, size = summary_data(means, sum(ssws), sizes)
                 mse = stdError(means)
 
-                if needMSE:
+                if MSEprecision >= 0:
                     summaryDf.at[index, column] = (
-                        "" if np.isnan(mean) else f"{round(mean, 2)} ± {round(mse, 1)}"
+                        ""
+                        if np.isnan(mean)
+                        else f"{round(mean, 2)} ± {round(mse, MSEprecision)}"
                     )
                 elif ANOVAtest:
                     summaryDf.at[index, column] = str(round(mean, 2))

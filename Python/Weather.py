@@ -57,44 +57,7 @@ def calculateMeans(df):
 
 
 res = calculateMeans(df)
-print(res)
+# print(res)
 
 # Plot line charts for each column
 res_after_transplanting = res[(res["Weeknum"] >= 1) & (res["Weeknum"] <= 13)]
-fig, axes = plt.subplots(1, 2, figsize=(15, 5), gridspec_kw={"wspace": 0.5})
-
-
-import StatisticsPNG as SPNG
-
-SPNG.lineChartMaxAvgMin(
-    res_after_transplanting,
-    axes[0],
-    "Weeknum",
-    "°C ",
-    "Weeks after Transplanting",
-    "Temperature (° C)",
-    np.arange(5, 31, 5),
-    np.arange(1, 14, 1),
-)
-SPNG.lineChartMaxAvgMin(
-    res_after_transplanting,
-    axes[1],
-    "Weeknum",
-    "RH ",
-    "Weeks after Transplanting",
-    "Humidity (%)",
-    np.arange(20, 101, 20),
-    np.arange(1, 14, 1),
-)
-# Adjust layout to prevent clipping of titles
-plt.tight_layout()
-# Display the plots
-# plt.show()
-
-chartDir = "outputs/Figure1_Weather_Data.png"
-
-# Save the chart as a PNG file
-plt.savefig(chartDir, dpi=300)
-
-# Open the saved PNG file using the default image viewer
-os.system("start " + chartDir)
