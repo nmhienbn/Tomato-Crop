@@ -16,23 +16,26 @@ def find_maximal_cliques(edges):
     return sorted_cliques
 
 
-def getLabels(groups_mean, lsd):
+def getLabels(groups_mean: list, groups_size: list, q_crit: float, msw: float):
     # Perform Tukey's HSD test
 
     significant_pairs = []
     is_all = True
     for i in range(len(groups_mean)):
         for j in range(i + 1, len(groups_mean)):
+            lsd = q_crit * np.sqrt(msw / 2 * (1 / groups_size[i] + 1 / groups_size[j]))
+            # print(lsd)
             if np.abs(groups_mean[i] - groups_mean[j]) < lsd:
                 significant_pairs.append((i, j))
             else:
                 is_all = False
 
-    # Find maximal cliques
-    maximal_cliques = find_maximal_cliques(significant_pairs)
     charGroup = [""] * len(groups_mean)
     if is_all:
         return charGroup
+
+    # Find maximal cliques
+    maximal_cliques = find_maximal_cliques(significant_pairs)
     current_letter = "a"
     # Set the character group
     for clique in maximal_cliques:

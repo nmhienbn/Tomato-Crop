@@ -52,9 +52,9 @@ def perform_anova_summary(
         # Extract Turkey's HSD values
         q_crit = studentized_range.ppf(1 - alpha, n_groups, dfw)
 
-        lsd = q_crit * np.sqrt(2 * msw / n_per_group)
+        lsd = q_crit * np.sqrt(msw / n_per_group)
 
-        charGroup = TukeyHSD.getLabels(groups_mean, lsd)
+        charGroup = TukeyHSD.getLabels(groups_mean, groups_size, q_crit, msw)
         lsd = round(lsd, 2)
     else:
         lsd = "ns"
@@ -79,11 +79,13 @@ def perform_anova(data, alpha=0.05):
         q_crit = studentized_range.ppf(
             1 - alpha, n_groups, n_groups * n_per_group - n_groups
         )
+        # print(q_crit, mse, n_groups)
 
         # Turkey's HSD characteristic group
         groups_mean = [np.mean(group) for group in data]
-        lsd = q_crit * np.sqrt(2 * mse / n_per_group)
-        charGroup = TukeyHSD.getLabels(groups_mean, lsd)
+        groups_size = [len(group) for group in data]
+        lsd = q_crit * np.sqrt(mse / n_per_group)
+        charGroup = TukeyHSD.getLabels(groups_mean, groups_size, q_crit, mse)
 
         lsd = round(lsd, 2)
     else:

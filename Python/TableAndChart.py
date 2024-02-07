@@ -68,7 +68,7 @@ def FruitMorphology():
     open(Table7Dir)
 
 
-# Weather()
-# PlantStructure()
-# YieldComponent()
+Weather()
+PlantStructure()
+YieldComponent()
 FruitMorphology()
