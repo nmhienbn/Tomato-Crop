@@ -130,24 +130,24 @@ def colChart(
     plt.savefig(chart_file_name, bbox_inches="tight", dpi=300)
 
 
-def configTable(dataFrame, chartFileName, showIndex=False):
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=300)
-    ax.axis("tight")
-    ax.axis("off")
-    table = ax.table(
-        cellText=dataFrame.values,
-        colLabels=dataFrame.columns,
-        rowLabels=dataFrame.index if showIndex else None,
-        cellLoc="center",
-        loc="center",
-    )
+# def configTable(dataFrame, chartFileName, showIndex=False):
+#     fig, ax = plt.subplots(figsize=(5, 5), dpi=300)
+#     ax.axis("tight")
+#     ax.axis("off")
+#     table = ax.table(
+#         cellText=dataFrame.values,
+#         colLabels=dataFrame.columns,
+#         rowLabels=dataFrame.index if showIndex else None,
+#         cellLoc="center",
+#         loc="center",
+#     )
 
-    table.auto_set_font_size(False)
-    table.set_fontsize(6)
-    table.auto_set_column_width([i for i in range(len(dataFrame.columns))])
-    # Specify the indices of columns to adjust
-    for cell in table._cells:
-        if cell[0] == 0:  # Check if it's the first row
-            cell_obj = table._cells[cell]
-            cell_obj.set_height(cell_obj.get_height() * 1.5)
-    plt.savefig(chartFileName, bbox_inches="tight", dpi=300)
+#     table.auto_set_font_size(False)
+#     table.set_fontsize(6)
+#     table.auto_set_column_width([i for i in range(len(dataFrame.columns))])
+#     # Specify the indices of columns to adjust
+#     for cell in table._cells:
+#         if cell[0] == 0:  # Check if it's the first row
+#             cell_obj = table._cells[cell]
+#             cell_obj.set_height(cell_obj.get_height() * 1.5)
+#     plt.savefig(chartFileName, bbox_inches="tight", dpi=300)
