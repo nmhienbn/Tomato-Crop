@@ -1,49 +1,72 @@
-from scipy.stats import f, studentized_range, f_oneway
+from scipy.stats import f, f_oneway, studentized_range
 import numpy as np
-import TukeyHSD
 import pandas as pd
+import statistics
+import TukeyHSD
 
 
-def calculate_mse(data):
-    # Calculate sum of squares within (SSW) and degrees of freedom within (dfw)
+def anova_summary_table(data, alpha=0.05):
+    tmp = [x for y in data for x in y]
+    means = np.mean(tmp)
+
+    # Sum of squares
     ssw = sum(np.sum((group - np.mean(group)) ** 2) for group in data)
+    ssb = sum(((np.mean(group) - means) ** 2) * len(group) for group in data)
+    sstot = ssw + ssb
+
+    # Degrees of freedom
     dfw = sum(len(group) - 1 for group in data)
+    dfb = len(data) - 1
+    dftot = dfw + dfb
 
-    # Calculate Mean Square Error (MSE)
-    mse = ssw / dfw
+    # Mean Square
+    msw = ssw / dfw
+    msb = ssb / dfb
 
-    return mse
+    # Perform ANOVA test
+    f_statistic, p_value = f_oneway(*data)
+    f_critical = f.ppf(1 - alpha, dfb, dfw)
+
+    # Creating DataFrame
+    df = pd.DataFrame(
+        {
+            "Source": ["Group", "Error", "Total"],
+            "SS": [ssb, ssw, sstot],
+            "df": [dfb, dfw, dftot],
+            "MS": [msb, msw, ""],
+            "F": [f_statistic, "", ""],
+            "P-value": [p_value, "", ""],
+            "F-critical": [f_critical, "", ""],
+        }
+    )
+    return df
 
 
-def stdError(values):
-    return np.std(values, ddof=1) / np.sqrt(len(values))
-
-
-# mean, ssw, size from data
-def calc_mean_sstot_size(data: list):
-    data = np.array(data)
-    mean = data.mean()
-    return [mean, sum((val - mean) ** 2 for val in data), len(data)]
-
-
-def perform_anova_summary(
+def anova_from_summary_data(
     groups_mean: list, groups_ssw: float, groups_size: list, alpha=0.05
 ):
     # Perform ANOVA test
-    mean, sstot, size = summary_data(groups_mean, groups_ssw, groups_size)
+    mean, sstot, size = statistics.summary_data(groups_mean, groups_ssw, groups_size)
     n_groups = len(groups_mean)
+
+    # Degrees of freedom
     dfb = n_groups - 1
     dfw = size - n_groups
+
+    # Sum of squares
     ssb = sum([(x - mean) ** 2 * size for x, size in zip(groups_mean, groups_size)])
     ssw = sstot - ssb
+
+    # Mean Square
     msw = ssw / dfw
     msb = ssb / dfb
+
+    # Perform ANOVA test
     f_value = msb / msw
     p_value = f.sf(f_value, dfb, dfw)
-    # print(mean, ssw, size, dfw, dfb, ssb, msw, msb, f_value, p_value)
 
     charGroup = [""] * n_groups
-    # print(nGroups)
+
     # Check the significance level
     if p_value < alpha:
         # Reject the null hypothesis: Significant differences between group means.
@@ -52,7 +75,7 @@ def perform_anova_summary(
         # Extract Turkey's HSD values
         q_crit = studentized_range.ppf(1 - alpha, n_groups, dfw)
 
-        lsd = q_crit * np.sqrt(msw / n_per_group)
+        lsd = q_crit * np.sqrt(2 * msw / n_per_group)
 
         charGroup = TukeyHSD.getLabels(groups_mean, groups_size, q_crit, msw)
         lsd = round(lsd, 2)
@@ -61,101 +84,20 @@ def perform_anova_summary(
     return lsd, charGroup
 
 
-def perform_anova(data, alpha=0.05):
-    # Perform ANOVA test
-    f_statistic, p_value = f_oneway(*data)
+def ANOVA_table_Tukey_HSD(data, alpha=0.05):
+    df = anova_summary_table(data, alpha)
+    p_value = df.loc[0, "P-value"]
+    msw = df.loc[1, "MS"]
+    dfw = df.loc[1, "df"]
+    n_groups = len(data)
+    charGroup = [""] * n_groups
 
-    charGroup = [""] * len(data)
     # Check the significance level
     if p_value < alpha:
         # Reject the null hypothesis: Significant differences between group means.
-
-        # Calculate MSE, and dfw
-        mse = calculate_mse(data)
-        n_groups = len(data)
-        n_per_group = len(data[0])
-
         # Extract Turkey's HSD values
-        q_crit = studentized_range.ppf(
-            1 - alpha, n_groups, n_groups * n_per_group - n_groups
-        )
-        # print(q_crit, mse, n_groups)
-
-        # Turkey's HSD characteristic group
+        q_crit = studentized_range.ppf(1 - alpha, n_groups, dfw)
         groups_mean = [np.mean(group) for group in data]
         groups_size = [len(group) for group in data]
-        lsd = q_crit * np.sqrt(mse / n_per_group)
-        charGroup = TukeyHSD.getLabels(groups_mean, groups_size, q_crit, mse)
-
-        lsd = round(lsd, 2)
-    else:
-        # Accept the null hypothesis: "No significant" differences between group means.
-        lsd = "ns"
-    return lsd, charGroup
-
-
-# calc mean, sstot, size from groups
-def summary_data(groups_mean: list, groups_ssw: float, groups_size: list):
-    mean = sum([mean * size for mean, size in zip(groups_mean, groups_size)]) / sum(
-        groups_size
-    )
-    ssb = sum([(x - mean) ** 2 * size for x, size in zip(groups_mean, groups_size)])
-    sstot = groups_ssw + ssb
-    return mean, sstot, sum(groups_size)
-
-
-def ANOVA_test_summary_table(
-    df: pd.DataFrame,
-    summaryDf: pd.DataFrame,
-    groupCol: str,
-    MSEprecision=-1,
-    ANOVAtest=True,
-    alpha=0.05,
-):
-    summaryDf[groupCol] = df[groupCol].unique()
-    LSD = pd.Series(index=summaryDf.columns)
-    LSD[groupCol] = "LSD" + TukeyHSD.get_subscript("(0.05)")
-
-    nrows = len(summaryDf[groupCol])
-
-    for column, series in summaryDf.items():
-        if column != groupCol:
-            groups_mean = []
-            groups_ssw = 0
-            groups_size = []
-            for index in range(nrows):
-                colVal = summaryDf.at[index, groupCol]
-                vals = df[df[groupCol] == colVal][column].tolist()
-
-                means, ssws, sizes = zip(
-                    *[(mean, ssw, size) for mean, ssw, size in vals if mean is not None]
-                )
-                mean, ssw, size = summary_data(means, sum(ssws), sizes)
-                mse = stdError(means)
-
-                if MSEprecision >= 0:
-                    summaryDf.at[index, column] = (
-                        ""
-                        if np.isnan(mean)
-                        else f"{round(mean, 2)} ± {round(mse, MSEprecision)}"
-                    )
-                elif ANOVAtest:
-                    summaryDf.at[index, column] = str(round(mean, 2))
-                else:
-                    summaryDf.at[index, column] = [mean, mse]
-
-                groups_mean.append(mean)
-                groups_ssw += ssw
-                groups_size.append(size)
-
-            if ANOVAtest:
-                LSD[column], charGroup = perform_anova_summary(
-                    groups_mean, groups_ssw, groups_size, alpha=alpha
-                )
-                for index, value in series.items():
-                    summaryDf.at[index, column] += TukeyHSD.get_superscript(
-                        charGroup[index]
-                    )
-    if ANOVAtest:
-        summaryDf = summaryDf._append(LSD, ignore_index=True)
-    return summaryDf
+        charGroup = TukeyHSD.getLabels(groups_mean, groups_size, q_crit, msw)
+    return df, charGroup
